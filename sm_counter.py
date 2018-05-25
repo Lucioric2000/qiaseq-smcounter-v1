@@ -321,6 +321,23 @@ def vc(bamFile, chrom, pos, minBQ, minMQ, mtDepth, rpb, hpLen, mismatchThr, mtDr
          BC = pileupRead.alignment.get_tag("Mi")
          # mapping quality
          mq = pileupRead.alignment.mapping_quality
+         # get mapq of mate
+         try:
+            mateMq = pileupRead.alignment.get_tag("MQ")
+            minFragMQ = min(mq,mate_mq)
+            if minFragMQ < minMQ:
+               minMQPass = False
+         except KeyError: 
+            '''
+            bam has not been tagged with the mate mapq,
+            drop read pairs based on their respective mapqs only
+            To note :
+            warn user ? or make command line argument more descriptive
+            settling on a more descriptive argument for now
+            '''
+            if mq < minMQ:
+               minMQPass = False         
+
          # get NM tag 
          NM = 0 
          allTags = pileupRead.alignment.tags
@@ -371,7 +388,7 @@ def vc(bamFile, chrom, pos, minBQ, minMQ, mtDepth, rpb, hpLen, mismatchThr, mtDr
             bq = pileupRead.alignment.query_qualities[pileupRead.query_position]
             bqSum[base] += bq
             # inclusion condition
-            incCond = bq >= minBQ and mq >= minMQ and mismatchPer100b <= mismatchThr
+            incCond = bq >= minBQ and minMQPass and mismatchPer100b <= mismatchThr
             alleleCnt[base] += 1
             mismatchCnt[base] += mismatchPer100b
             if pairOrder == 'R1':
@@ -393,7 +410,7 @@ def vc(bamFile, chrom, pos, minBQ, minMQ, mtDepth, rpb, hpLen, mismatchThr, mtDr
             bq = pileupRead.alignment.query_qualities[pileupRead.query_position]
             bqSum[base] += bq
             # inclusion condition
-            incCond = bq >= minBQ and mq >= minMQ and mismatchPer100b <= mismatchThr
+            incCond = bq >= minBQ and minMQPass and mismatchPer100b <= mismatchThr
             alleleCnt[base] += 1
             mismatchCnt[base] += mismatchPer100b
             if pairOrder == 'R1':
@@ -414,7 +431,7 @@ def vc(bamFile, chrom, pos, minBQ, minMQ, mtDepth, rpb, hpLen, mismatchThr, mtDr
                bq = minBQ
                bqSum[base] += bq
                # inclusion condition
-               incCond = bq >= minBQ and mq >= minMQ and mismatchPer100b <= mismatchThr
+               incCond = bq >= minBQ and minMQPass and mismatchPer100b <= mismatchThr
             # if the site is a regular locus, 
             else: 
                base = pileupRead.alignment.query_sequence[pileupRead.query_position] # note: query_sequence includes soft clipped bases
@@ -424,7 +441,7 @@ def vc(bamFile, chrom, pos, minBQ, minMQ, mtDepth, rpb, hpLen, mismatchThr, mtDr
                if bq < minBQ:
                   lowQReads[base] += 1
                # inclusion condition
-               incCond = bq >= minBQ and mq >= minMQ and mismatchPer100b <= mismatchThr
+               incCond = bq >= minBQ and minMQPass and mismatchPer100b <= mismatchThr
                if pairOrder == 'R1':
                   # distance to the barcode end in R1; 
                   if pileupRead.alignment.is_reverse:
@@ -620,7 +637,7 @@ def argParseInit():  # this is done inside a function because multiprocessing mo
    parser.add_argument('--rpb'      , default=None, required=True, type=float, help='Mean read pairs per MT')
    parser.add_argument('--nCPU'     , type=int, default=1 , help='number of CPUs to use in parallel')
    parser.add_argument('--minBQ'    , type=int, default=20, help='minimum base quality allowed for analysis')
-   parser.add_argument('--minMQ'    , type=int, default=30, help='minimum mapping quality allowed for analysis')
+   parser.add_argument('--minMQ', type=int, default=30, help="minimum mapping quality allowed for analysis. If the bam is tagged with its mate's mapq, then the minimum of the R1 and R2 mapq will be used for comparison, if not each read is compared independently.")   
    parser.add_argument('--hpLen'    , type=int, default=10, help='Minimum length for homopolymers')
    parser.add_argument('--mismatchThr', type=float, default=6.0, help='average number of mismatches per 100 bases allowed')
    parser.add_argument('--mtDrop'     , type=int, default=0, help='Drop MTs with lower than or equal to X reads.')
