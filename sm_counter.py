@@ -324,7 +324,7 @@ def vc(bamFile, chrom, pos, minBQ, minMQ, mtDepth, rpb, hpLen, mismatchThr, mtDr
          # get mapq of mate
          try:
             mateMq = pileupRead.alignment.get_tag("MQ")
-            minFragMQ = min(mq,mate_mq)
+            minFragMQ = min(mq,mateMq)
             if minFragMQ < minMQ:
                minMQPass = False
          except KeyError: 
