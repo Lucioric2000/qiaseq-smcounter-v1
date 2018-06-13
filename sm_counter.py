@@ -315,6 +315,8 @@ def vc(bamFile, chrom, pos, minBQ, minMQ, mtDepth, rpb, hpLen, mismatchThr, mtDr
    # pile up reads
    for read in samfile.pileup(region = chrom + ':' + pos + ':' + pos, truncate=True, max_depth=1000000, stepper='nofilter'):
       for pileupRead in read.pileups:
+         # Starts the minMQPass variable
+         minMQPass = True
          # read id
          readid = pileupRead.alignment.query_name
          # unique molecule index
